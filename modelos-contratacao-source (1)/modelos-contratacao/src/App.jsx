@@ -242,10 +242,10 @@ function App() {
             <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
               <CardContent className="p-8">
                 <div className="flex justify-center">
-                  <img 
-                    src={decisionFlowImg} 
-                    alt="Fluxograma de Decisão"
-                    className="max-w-full h-auto rounded-lg"
+                  <iframe
+                    src="/decision_tree.html"
+                    title="Fluxograma de Decisão Interativo"
+                    className="w-full h-[700px] rounded-lg border-none"
                   />
                 </div>
               </CardContent>
