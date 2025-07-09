@@ -362,18 +362,6 @@ function App() {
           </Card>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-8 px-6 border-t border-slate-700">
-        <div className="container mx-auto text-center">
-          <p className="text-slate-400">
-            Baseado na identidade visual de{' '}
-            <a href="https://tech.fattocs.com" className="text-green-400 hover:text-green-300 transition-colors">
-              tech.fattocs.com
-            </a>
-          </p>
-        </div>
-      </footer>
     </div>
   )
 }
