@@ -72,24 +72,41 @@
         }
 
         .decision-node.minimized {
-            width: 200px;
-            padding: 1rem;
-            opacity: 0.8;
+            width: 120px; /* Significantly smaller width */
+            height: auto; /* Auto height based on content */
+            min-height: 50px; /* Minimum height */
+            padding: 0.5rem;
+            font-size: 0.75rem; /* Smaller font for title */
+            opacity: 0.6;
+            border-width: 1px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            z-index: 5; /* Lower z-index than active nodes */
         }
 
         .decision-node.minimized h3 {
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
+            font-size: 0.8rem; /* Smaller title font */
+            margin-bottom: 0.25rem;
         }
 
-        .decision-node.minimized p {
-            font-size: 0.8rem;
-            margin-bottom: 0.5rem;
+        /* Ensure p and options are hidden in minimized view, already defined but reiterated for clarity */
+        .decision-node.minimized p,
+        .decision-node.minimized .options {
+            display: none;
+        }
+
+        /* Style for nodes deep within an inactive (minimized) branch */
+        .decision-node.deep-inactive {
+            display: none !important; /* Simplest approach: just hide them */
         }
 
         .decision-node.current {
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            z-index: 10; /* Ensure current is on top */
+        }
+
+        .decision-node.fade-in:not(.minimized) {
+            z-index: 9; /* Active path nodes also prominent */
         }
 
         .decision-node:hover {
@@ -320,18 +337,37 @@
         let currentPath = ['start']; // Initialize with the start node
         let lastSelectedNodeId = 'start';
 
-        // Function to get the parent ID of a node based on the decision tree structure
-        // This needs to be manually defined or inferred from your HTML structure if possible
-        const parentMap = {
-            'scope-yes': 'start',
-            'scope-no': 'start',
-            'risk-yes': 'scope-no',
-            'risk-no': 'scope-no',
-            'management-yes': 'risk-no',
-            'management-no': 'risk-no',
-            'continuous-yes': 'management-no',
-            'continuous-no': 'management-no'
+        const nodeConfigurations = {
+            'start': { top: '20px', left: '50%', type: 'question' },
+            'scope-yes': { top: '150px', left: '20%', type: 'answer', parent: 'start', choice: 'yes' },
+            'scope-no': { top: '150px', left: '80%', type: 'question', parent: 'start', choice: 'no' },
+            'risk-yes': { top: '280px', left: '60%', type: 'answer', parent: 'scope-no', choice: 'yes' }, // Adjusted left for visibility
+            'risk-no': { top: '280px', left: '100%', type: 'question', parent: 'scope-no', choice: 'no' }, // Adjusted left
+            'management-yes': { top: '410px', left: '80%', type: 'answer', parent: 'risk-no', choice: 'yes' }, // Adjusted left
+            'management-no': { top: '410px', left: '120%', type: 'question', parent: 'risk-no', choice: 'no' }, // Adjusted left
+            'continuous-yes': { top: '540px', left: '100%', type: 'answer', parent: 'management-no', choice: 'yes' }, // Adjusted left
+            'continuous-no': { top: '540px', left: '140%', type: 'answer', parent: 'management-no', choice: 'no' } // Adjusted left
         };
+
+        // Simpler parentMap derived from configurations for convenience
+        const parentMap = {};
+        Object.keys(nodeConfigurations).forEach(nodeId => {
+            if (nodeConfigurations[nodeId].parent) {
+                parentMap[nodeId] = nodeConfigurations[nodeId].parent;
+            }
+        });
+
+        // Helper to get children of a node
+        function getChildren(parentId) {
+            const children = [];
+            for (const nodeId in nodeConfigurations) {
+                if (nodeConfigurations[nodeId].parent === parentId) {
+                    children.push(nodeId);
+                }
+            }
+            return children;
+        }
+
 
         function getPathToNode(nodeId) {
             const path = [];
@@ -344,122 +380,152 @@
             return path;
         }
 
-        function showNode(nodeId, clickedButton) {
-            const newPath = getPathToNode(nodeId);
-            const allNodes = document.querySelectorAll('.decision-node');
-            const clickedNodeElement = clickedButton.closest('.decision-node');
-            const clickedNodeId = clickedNodeElement.id;
+        function minimizeBranchRecursive(branchStartNodeId) {
+            const el = document.getElementById(branchStartNodeId);
+            if (!el) return;
 
-            // Determine the divergence point in the path
-            let divergenceIndex = -1;
-            for (let i = 0; i < currentPath.length; i++) {
-                if (currentPath[i] !== newPath[i]) {
-                    divergenceIndex = i;
-                    break;
+            el.classList.add('deep-inactive'); // Hide by default
+            el.classList.remove('fade-in', 'current', 'minimized');
+
+
+            const children = getChildren(branchStartNodeId);
+            children.forEach(childId => {
+                minimizeBranchRecursive(childId);
+            });
+        }
+
+        function showNode(targetNodeId, clickedButton) {
+            const newPath = getPathToNode(targetNodeId);
+            const allNodeElements = document.querySelectorAll('.decision-node');
+
+            // 1. Default state: minimize or hide all
+            allNodeElements.forEach(el => {
+                // Keep 'start' initially visible but potentially minimized if not in newPath (though it always is)
+                if (el.id === 'start' && !newPath.includes('start')) { // Should not happen with current getPathToNode
+                     el.classList.add('minimized'); // Or hidden
+                } else if (el.id !== 'start') {
+                    el.classList.add('deep-inactive'); // Hide everything else initially
                 }
-            }
+                el.classList.remove('current', 'fade-in');
+            });
 
-            // If the click is on a direct child of the current last node, extend the path
-            // Otherwise, treat it as changing a previous decision
-            let pathChangedPreviously = false;
-            if (parentMap[nodeId] !== lastSelectedNodeId && lastSelectedNodeId !== 'start' && clickedNodeId !== lastSelectedNodeId) {
-                 // User clicked on a node that is NOT a direct child of the last selected node.
-                 // This means they went back and changed a decision.
-                pathChangedPreviously = true;
-            }
+            // 2. Process active path
+            let currentYLevel = 0; // For potential dynamic Y adjustments (not fully used yet)
 
+            newPath.forEach((nodeIdInPath, index) => {
+                const nodeEl = document.getElementById(nodeIdInPath);
+                if (!nodeEl) return;
 
-            allNodes.forEach(n => {
-                const isPartOfNewPath = newPath.includes(n.id);
-                const wasPartOfOldPath = currentPath.includes(n.id);
+                const config = nodeConfigurations[nodeIdInPath];
+                nodeEl.classList.remove('hidden', 'deep-inactive', 'minimized');
+                nodeEl.classList.add('fade-in');
+                nodeEl.style.top = config.top;
+                nodeEl.style.left = config.left;
+                nodeEl.style.transform = 'translateX(-50%)'; // Ensure this is maintained
 
-                if (isPartOfNewPath) {
-                    n.classList.remove('hidden', 'minimized');
-                    n.classList.add('fade-in');
-                    // Ensure parent question nodes of the new path are not minimized
-                    if (n.classList.contains('question')) {
-                         n.classList.remove('minimized');
-                    }
-                } else if (wasPartOfOldPath) {
-                    // Node was part of the old path but not the new one
-                     if (n.classList.contains('answer')) { // Only hide/minimize answers
-                        n.classList.add('hidden');
-                        n.classList.remove('fade-in');
-                    } else if (n.classList.contains('question')) {
-                        // If it's a question node that's no longer in the active path to an answer,
-                        // and it's not the start node, it can be hidden or minimized.
-                        // For simplicity, let's hide it if it's not a direct parent of the new path.
-                        let isParentOfNewPath = false;
-                        newPath.forEach(pNodeId => {
-                            if(parentMap[pNodeId] === n.id) isParentOfNewPath = true;
-                        });
-                        if(!isParentOfNewPath && n.id !== 'start'){
-                            n.classList.add('hidden');
-                             n.classList.remove('fade-in');
-                        } else if (n.id !== 'start') {
-                            // Optionally minimize question nodes that are parents but not the direct one clicked
-                            // n.classList.add('minimized');
+                if (nodeIdInPath === targetNodeId) {
+                    nodeEl.classList.add('current');
+                }
+
+                // 3. Handle children of the current node in the active path
+                if (config.type === 'question') {
+                    const children = getChildren(nodeIdInPath);
+                    const activeChildId = newPath[index + 1]; // Next node in our active path
+
+                    children.forEach(childId => {
+                        const childEl = document.getElementById(childId);
+                        if (!childEl) return;
+                        const childConfig = nodeConfigurations[childId];
+
+                        if (childId === activeChildId) {
+                            // This child is part of the active path, already handled or will be handled by iteration
+                            // Ensure it's not minimized if it was previously
+                            childEl.classList.remove('minimized', 'deep-inactive');
+                        } else {
+                            // This is an inactive sibling branch
+                            childEl.classList.remove('hidden', 'deep-inactive');
+                            childEl.classList.add('minimized', 'fade-in');
+
+                            // --- Revised Repositioning logic for minimized inactive sibling ---
+                            const activeChildOriginalLeft = parseFloat(nodeConfigurations[activeChildId].left);
+                            const minimizedNodeWidthPercent = 12.0; // Approx. 120px / 1000px_container_width
+                            const edgeSpacingPercent = 5.0; // Desired space from container edge
+                            const centerThreshold = 50.0;
+                            let newInactiveLeftPercent;
+
+                            if (activeChildOriginalLeft < centerThreshold) {
+                                // Active child is on the LEFT half, so place minimized inactive node on the RIGHT edge.
+                                // Position its center such that its right edge is `edgeSpacingPercent` from container right.
+                                newInactiveLeftPercent = 100.0 - edgeSpacingPercent - (minimizedNodeWidthPercent / 2);
+                            } else {
+                                // Active child is on the RIGHT half, so place minimized inactive node on the LEFT edge.
+                                // Position its center such that its left edge is `edgeSpacingPercent` from container left.
+                                newInactiveLeftPercent = edgeSpacingPercent + (minimizedNodeWidthPercent / 2);
+                            }
+
+                            childEl.style.top = childConfig.top; // Keep original vertical level
+                            childEl.style.left = newInactiveLeftPercent + '%';
+                            childEl.style.transform = 'translateX(-50%)'; // Center the node on this new left percentage
+
+                            // Minimize all descendants of this inactive sibling branch
+                            const grandChildren = getChildren(childId);
+                            grandChildren.forEach(grandChildId => {
+                                minimizeBranchRecursive(grandChildId);
+                            });
                         }
-                    }
-                } else {
-                    // Node is not part of new or old path (e.g. sibling branches)
-                     n.classList.add('hidden');
-                     n.classList.remove('fade-in');
+                    });
                 }
             });
 
-            // Update current path and last selected node
             currentPath = newPath;
-            lastSelectedNodeId = nodeId; // The node we are navigating TO
+            lastSelectedNodeId = targetNodeId;
 
-            // Highlight the current node (the one just revealed)
-            allNodes.forEach(n => n.classList.remove('current'));
-            const targetNode = document.getElementById(nodeId);
-            if (targetNode) {
-                targetNode.classList.add('current');
-                 setTimeout(() => {
-                    targetNode.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'nearest', // Changed to 'nearest' for potentially better UX
-                        inline: 'center'
-                    });
-                }, 150); // Slightly increased delay
+            // Scroll the target node into view (attempt to keep it centered)
+            const currentDomNode = document.getElementById(targetNodeId);
+            if (currentDomNode) {
+                // Simple scroll into view. With dynamic layout, this might not be needed.
+                // currentDomNode.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
             }
-             // Ensure the container scrolls if necessary to keep the tree visible
-            const treeContainer = document.querySelector('.tree-container');
-            setTimeout(() => {
-                 if (treeContainer.scrollHeight > treeContainer.clientHeight) {
-                    // This is a simple check; more sophisticated logic might be needed
-                    // depending on how you want to handle scrolling precisely.
-                    // For now, scrolling the target node into view should handle most cases.
-                }
-            }, 200);
         }
-
 
         function resetTree() {
             currentPath = ['start'];
             lastSelectedNodeId = 'start';
-            const allNodes = document.querySelectorAll('.decision-node');
-            allNodes.forEach(node => {
-                if (node.id === 'start') {
-                    node.classList.remove('hidden', 'minimized', 'current');
-                    node.classList.add('fade-in');
+
+            document.querySelectorAll('.decision-node').forEach(el => {
+                const config = nodeConfigurations[el.id];
+                if (el.id === 'start') {
+                    el.classList.remove('hidden', 'minimized', 'deep-inactive', 'current');
+                    el.classList.add('fade-in');
+                    el.style.top = config.top;
+                    el.style.left = config.left;
+                    el.style.transform = 'translateX(-50%)';
                 } else {
-                    node.classList.add('hidden');
-                    node.classList.remove('fade-in', 'minimized', 'current');
+                    el.classList.add('deep-inactive'); // Hide others
+                    el.classList.remove('fade-in', 'minimized', 'current');
                 }
             });
-            document.getElementById('start').scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
+            // document.getElementById('start').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            showNode('start', document.getElementById('start')); // Re-run showNode for 'start' to apply initial layout
         }
 
-        // Initial setup
         window.addEventListener('load', function() {
-            document.getElementById('start').classList.remove('hidden');
-            document.getElementById('start').classList.add('current');
+            // Apply initial positions from config to all nodes
+            document.querySelectorAll('.decision-node').forEach(el => {
+                const config = nodeConfigurations[el.id];
+                if (config) {
+                    el.style.top = config.top;
+                    el.style.left = config.left;
+                    el.style.transform = 'translateX(-50%)'; // Crucial for centering
+                }
+                if (el.id !== 'start') {
+                    el.classList.add('deep-inactive'); // Initially hide all but start
+                } else {
+                    el.classList.remove('hidden', 'deep-inactive', 'minimized');
+                    el.classList.add('fade-in', 'current');
+                }
+            });
+
             // Initial fade-in for the container
             const container = document.querySelector('.container');
             container.style.opacity = '0';
