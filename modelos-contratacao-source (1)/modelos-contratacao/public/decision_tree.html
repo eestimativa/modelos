@@ -29,7 +29,7 @@
             width: 100%;
             min-height: 600px;
             position: relative;
-            overflow: hidden;
+            /* overflow: hidden; // Removed to allow button to be outside if needed, though it will be inside */
         }
 
         .header {
@@ -37,6 +37,7 @@
             color: white;
             padding: 1.5rem;
             text-align: center;
+            position: relative; /* Added for positioning context for the reset button */
         }
 
         .header h1 {
@@ -156,8 +157,8 @@
 
         .reset-btn {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 1.5rem; /* Align with header padding */
+            right: 1.5rem; /* Align with header padding */
             background: #667eea;
             color: white;
             border: none;
@@ -166,6 +167,7 @@
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s ease;
+            z-index: 10; /* Ensure it's above other header content if any overlap */
         }
 
         .reset-btn:hover {
@@ -236,13 +238,12 @@
 <body>
     <div class="container">
         <div class="header">
+            <button class="reset-btn" onclick="resetTree()">Recomeçar</button>
             <h1>Modelos de Contratação</h1>
             <p>Encontre o modelo ideal para seu projeto</p>
         </div>
 
         <div class="tree-container">
-            <button class="reset-btn" onclick="resetTree()">Recomeçar</button>
-
             <!-- Nó inicial -->
             <div class="decision-node question" id="start">
                 <h3>Escopo definido?</h3>
