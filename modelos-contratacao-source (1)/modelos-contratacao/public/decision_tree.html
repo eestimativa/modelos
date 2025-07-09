@@ -375,30 +375,8 @@
         function clearArrows() {
             const canvas = document.querySelector('.tree-container svg.arrow-canvas');
             if (canvas) {
-                while (canvas.firstChild && canvas.firstChild.nodeName !== 'defs') { // Keep defs
-                    canvas.removeChild(canvas.firstChild);
-                }
-                 // Re-add defs if it was accidentally removed or ensure it's there
-                if (!canvas.querySelector('defs')) {
-                    const defs = document.createElementNS(svgNS, 'defs');
-                    const marker = document.createElementNS(svgNS, 'marker');
-                    marker.setAttribute('id', 'arrowhead');
-                    marker.setAttribute('markerWidth', '10');
-                    marker.setAttribute('markerHeight', '7');
-                    marker.setAttribute('refX', '0');
-                    marker.setAttribute('refY', '3.5');
-                    marker.setAttribute('orient', 'auto');
-                    marker.setAttribute('markerUnits', 'strokeWidth');
-                    const polygon = document.createElementNS(svgNS, 'polygon');
-                    polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
-                    polygon.setAttribute('fill', '#667eea');
-                    marker.appendChild(polygon);
-                    defs.appendChild(marker);
-                    // Check if canvas still exists before appending
-                    if (document.querySelector('.tree-container svg.arrow-canvas')) {
-                         document.querySelector('.tree-container svg.arrow-canvas').appendChild(defs);
-                    }
-                }
+                const lines = canvas.querySelectorAll('line');
+                lines.forEach(line => line.remove());
             }
         }
 
