@@ -51,78 +51,100 @@
             opacity: 0.9;
         }
 
-        .tree-container {
-            position: relative;
-            padding: 2rem;
-            min-height: 500px;
+        .tree-container svg.arrow-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%; /* Will be dynamically adjusted by JS if content overflows */
+            pointer-events: none; /* Allows clicks to pass through to nodes below */
+            z-index: 0; /* Arrows drawn behind nodes */
         }
 
+        .tree-container svg.arrow-canvas line {
+            stroke: #667eea; /* Arrow color */
+            stroke-width: 2px;
+            marker-end: url(#arrowhead); /* For arrowhead */
+        }
+
+        /* Define arrowhead marker */
+        .tree-container svg.arrow-canvas defs marker {
+            overflow: visible;
+        }
+
+        .tree-container {
+            position: relative; /* Needed for absolute positioning of sim-resultado-nodes and SVG canvas */
+            padding: 2rem;
+            min-height: 500px;
+            /* overflow-y: auto; /* Consider adding if vertical content still overflows */
+        }
+
+        /* New base style for decision-node for linear flow */
         .decision-node {
             background: white;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
             padding: 1.5rem;
-            text-align: center;
-            cursor: pointer;
+            text-align: left;
             transition: all 0.3s ease;
-            width: 250px;
-            position: absolute;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transform: translateX(-50%);
+            margin-bottom: 20px;
+            width: 100%;
+            position: relative; /* For z-index context */
+            z-index: 2;         /* Nodes above arrows */
         }
 
-        .decision-node.minimized {
-            width: 120px; /* Significantly smaller width */
-            height: auto; /* Auto height based on content */
-            min-height: 50px; /* Minimum height */
-            padding: 0.5rem;
-            font-size: 0.75rem; /* Smaller font for title */
-            opacity: 0.6;
-            border-width: 1px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-            z-index: 5; /* Lower z-index than active nodes */
-        }
-
-        .decision-node.minimized h3 {
-            font-size: 0.8rem; /* Smaller title font */
-            margin-bottom: 0.25rem;
-        }
-
-        /* Ensure p and options are hidden in minimized view, already defined but reiterated for clarity */
-        .decision-node.minimized p,
-        .decision-node.minimized .options {
-            display: none;
-        }
-
-        /* Style for nodes deep within an inactive (minimized) branch */
-        .decision-node.deep-inactive {
-            display: none !important; /* Simplest approach: just hide them */
-        }
-
-        .decision-node.current {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-            z-index: 10; /* Ensure current is on top */
-        }
-
-        .decision-node.fade-in:not(.minimized) {
-            z-index: 9; /* Active path nodes also prominent */
-        }
-
-        .decision-node:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        }
-
+        /* Style for question nodes in the main flow */
         .decision-node.question {
+            position: static !important;
+            width: 55% !important;
+            margin-left: 0 !important;
+            margin-right: auto !important;
             background: #f8fafc;
             border-color: #667eea;
+            transform: none !important;
+            text-align: left;
         }
 
+        /* Style for "Sim" result nodes */
+        .decision-node.sim-resultado-node {
+            position: absolute !important;
+            width: 40% !important;
+            background: #e6fffa;
+            border-color: #38b2ac;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 0 !important;
+            text-align: left;
+            /* top and left will be set by JavaScript */
+            /* z-index still 2 from base .decision-node, or can be higher if needed */
+        }
+
+        /* Old styles from previous layout attempt - hide them */
+        .decision-node.minimized,
+        .decision-node.deep-inactive,
+        .decision-node.minimized h3,
+        .decision-node.minimized p,
+        .decision-node.minimized .options {
+            display: none !important;
+        }
+
+        .decision-node.current { /* Applies to current question or sim-result */
+            border-color: #667eea; /* Keep highlight consistent */
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            /* z-index: 10; /* Ensure current is on top if overlapping could occur, base z-index might be enough */
+        }
+
+        /* .decision-node.fade-in:not(.minimized) - this specific selector might not be needed anymore */
+
+        .decision-node:hover { /* General hover, keep if desired */
+            /* transform: translateY(-2px); // Might conflict with new layout */
+            /* box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); // Keep if desired */
+        }
+
+        /* .decision-node.answer - this was for old layout, sim-resultado-node replaces its visual role for "Sim" */
         .decision-node.answer {
-            background: #f0f8ff;
-            border-color: #4299e1;
-            border-width: 2px;
+             /* If 'answer' class is still used for non-sim-results (e.g. 'No' path end), define its style here */
+             /* For now, assume all end points are sim-results or styled by .question if they lead to more qs */
         }
 
         .decision-node h3 {
@@ -216,7 +238,10 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Posicionamento dos nós */
+        /* Posicionamento dos nós - ESTES ESTILOS SERÃO REMOVIDOS OU COMENTADOS
+           PARA O NOVO LAYOUT DINÂMICO/FLUXO. O JAVASCRIPT CUIDARÁ DO POSICIONAMENTO.
+        */
+        /*
         #start { top: 20px; left: 50%; transform: translateX(-50%); }
         #scope-yes { top: 150px; left: 20%; transform: translateX(-50%); }
         #scope-no { top: 150px; left: 80%; transform: translateX(-50%); }
@@ -226,6 +251,7 @@
         #management-no { top: 410px; left: 120%; transform: translateX(-50%); }
         #continuous-yes { top: 540px; left: 100%; transform: translateX(-50%); }
         #continuous-no { top: 540px; left: 140%; transform: translateX(-50%); }
+        */
 
         @media (max-width: 768px) {
             .tree-container {
@@ -261,6 +287,13 @@
         </div>
 
         <div class="tree-container">
+            <svg class="arrow-canvas" width="100%" height="100%">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#667eea" />
+                    </marker>
+                </defs>
+            </svg>
             <!-- Nó inicial -->
             <div class="decision-node question" id="start">
                 <h3>Escopo definido?</h3>
@@ -334,199 +367,240 @@
     </div>
 
     <script>
-        let currentPath = ['start']; // Initialize with the start node
-        let lastSelectedNodeId = 'start';
+        let activeQuestionNodes = ['start']; // Tracks the visible question nodes in the main flow
+        let activeSimResultNode = null; // Tracks the currently visible "Sim" result node, if any
+
+        const svgNS = "http://www.w3.org/2000/svg";
+
+        function clearArrows() {
+            const canvas = document.querySelector('.tree-container svg.arrow-canvas');
+            if (canvas) {
+                while (canvas.firstChild && canvas.firstChild.nodeName !== 'defs') { // Keep defs
+                    canvas.removeChild(canvas.firstChild);
+                }
+                 // Re-add defs if it was accidentally removed or ensure it's there
+                if (!canvas.querySelector('defs')) {
+                    const defs = document.createElementNS(svgNS, 'defs');
+                    const marker = document.createElementNS(svgNS, 'marker');
+                    marker.setAttribute('id', 'arrowhead');
+                    marker.setAttribute('markerWidth', '10');
+                    marker.setAttribute('markerHeight', '7');
+                    marker.setAttribute('refX', '0');
+                    marker.setAttribute('refY', '3.5');
+                    marker.setAttribute('orient', 'auto');
+                    marker.setAttribute('markerUnits', 'strokeWidth');
+                    const polygon = document.createElementNS(svgNS, 'polygon');
+                    polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+                    polygon.setAttribute('fill', '#667eea');
+                    marker.appendChild(polygon);
+                    defs.appendChild(marker);
+                    // Check if canvas still exists before appending
+                    if (document.querySelector('.tree-container svg.arrow-canvas')) {
+                         document.querySelector('.tree-container svg.arrow-canvas').appendChild(defs);
+                    }
+                }
+            }
+        }
+
+        function drawArrow(startNodeId, endNodeId) {
+            const startEl = document.getElementById(startNodeId);
+            const endEl = document.getElementById(endNodeId);
+            const canvas = document.querySelector('.tree-container svg.arrow-canvas');
+
+            if (!startEl || !endEl || !canvas) return;
+
+            const treeContainer = document.querySelector('.tree-container');
+            const treeRect = treeContainer.getBoundingClientRect(); // For relative positioning if needed
+
+            // Connection point for startEl (e.g., right-middle of question node)
+            // offsetLeft/Top are relative to the offsetParent, which should be tree-container for sim-resultado-node
+            // For question nodes (in flow), offsetTop is relative to tree-container, offsetLeft should be 0 or small margin
+            const startX = startEl.offsetLeft + startEl.offsetWidth;
+            const startY = startEl.offsetTop + (startEl.offsetHeight / 2);
+
+            // Connection point for endEl (e.g., left-middle of sim-result node)
+            const endX = endEl.offsetLeft;
+            const endY = endEl.offsetTop + (endEl.offsetHeight / 2);
+
+            const line = document.createElementNS(svgNS, 'line');
+            line.setAttribute('x1', startX.toString());
+            line.setAttribute('y1', startY.toString());
+            line.setAttribute('x2', endX.toString());
+            line.setAttribute('y2', endY.toString());
+            // Optional: Give line an ID if specific removal is needed later
+            // line.id = `arrow-${startNodeId}-${endNodeId}`;
+            canvas.appendChild(line);
+        }
+
 
         const nodeConfigurations = {
-            'start': { top: '20px', left: '50%', type: 'question' },
-            'scope-yes': { top: '150px', left: '20%', type: 'answer', parent: 'start', choice: 'yes' },
-            'scope-no': { top: '150px', left: '80%', type: 'question', parent: 'start', choice: 'no' },
-            'risk-yes': { top: '280px', left: '60%', type: 'answer', parent: 'scope-no', choice: 'yes' }, // Adjusted left for visibility
-            'risk-no': { top: '280px', left: '100%', type: 'question', parent: 'scope-no', choice: 'no' }, // Adjusted left
-            'management-yes': { top: '410px', left: '80%', type: 'answer', parent: 'risk-no', choice: 'yes' }, // Adjusted left
-            'management-no': { top: '410px', left: '120%', type: 'question', parent: 'risk-no', choice: 'no' }, // Adjusted left
-            'continuous-yes': { top: '540px', left: '100%', type: 'answer', parent: 'management-no', choice: 'yes' }, // Adjusted left
-            'continuous-no': { top: '540px', left: '140%', type: 'answer', parent: 'management-no', choice: 'no' } // Adjusted left
+            'start': { type: 'question', yesLeadsTo: 'scope-yes', noLeadsTo: 'scope-no' },
+            'scope-yes': { type: 'sim-result', parentQuestion: 'start' },
+            'scope-no': { type: 'question', parentQuestion: 'start', yesLeadsTo: 'risk-yes', noLeadsTo: 'risk-no' },
+            'risk-yes': { type: 'sim-result', parentQuestion: 'scope-no' },
+            'risk-no': { type: 'question', parentQuestion: 'scope-no', yesLeadsTo: 'management-yes', noLeadsTo: 'management-no' },
+            'management-yes': { type: 'sim-result', parentQuestion: 'risk-no' },
+            'management-no': { type: 'question', parentQuestion: 'risk-no', yesLeadsTo: 'continuous-yes', noLeadsTo: 'continuous-no' },
+            'continuous-yes': { type: 'sim-result', parentQuestion: 'management-no' },
+            'continuous-no': { type: 'sim-result', parentQuestion: 'management-no' } // Assuming 'continuous-no' is also a 'sim-like' result
         };
 
-        // Simpler parentMap derived from configurations for convenience
-        const parentMap = {};
-        Object.keys(nodeConfigurations).forEach(nodeId => {
-            if (nodeConfigurations[nodeId].parent) {
-                parentMap[nodeId] = nodeConfigurations[nodeId].parent;
-            }
-        });
+        // Main function to update the tree display
+        function showNode(nodeIdToShowOnClick, clickedButtonEl) {
+            const allDecisionNodeElements = document.querySelectorAll('.decision-node');
+            let currentParentQuestionId = null;
+            let choiceMade = null; // 'yes' or 'no'
 
-        // Helper to get children of a node
-        function getChildren(parentId) {
-            const children = [];
-            for (const nodeId in nodeConfigurations) {
-                if (nodeConfigurations[nodeId].parent === parentId) {
-                    children.push(nodeId);
+            if (clickedButtonEl) {
+                const parentNode = clickedButtonEl.closest('.decision-node');
+                currentParentQuestionId = parentNode.id;
+                if (clickedButtonEl.classList.contains('btn-yes')) {
+                    choiceMade = 'yes';
+                } else if (clickedButtonEl.classList.contains('btn-no')) {
+                    choiceMade = 'no';
                 }
             }
-            return children;
-        }
 
-
-        function getPathToNode(nodeId) {
-            const path = [];
-            let current = nodeId;
-            while (current && current !== 'start') {
-                path.unshift(current);
-                current = parentMap[current];
+            // Determine the actual target node ID based on the choice from the parent
+            let targetNodeId;
+            if (choiceMade && currentParentQuestionId) {
+                const parentConfig = nodeConfigurations[currentParentQuestionId];
+                targetNodeId = (choiceMade === 'yes') ? parentConfig.yesLeadsTo : parentConfig.noLeadsTo;
+            } else {
+                targetNodeId = nodeIdToShowOnClick; // This is for initial load or reset (e.g. 'start')
             }
-            path.unshift('start');
-            return path;
-        }
 
-        function minimizeBranchRecursive(branchStartNodeId) {
-            const el = document.getElementById(branchStartNodeId);
-            if (!el) return;
+            const targetConfig = nodeConfigurations[targetNodeId];
+            if (!targetConfig) {
+                console.error("Config not found for targetNodeId:", targetNodeId);
+                return;
+            }
 
-            el.classList.add('deep-inactive'); // Hide by default
-            el.classList.remove('fade-in', 'current', 'minimized');
+            // Update state variables: activeQuestionNodes and activeSimResultNode
+            if (targetConfig.type === 'question') {
+                // If we are going to a question node
+                if (currentParentQuestionId) { // Navigating from a parent question
+                    const parentIndex = activeQuestionNodes.indexOf(currentParentQuestionId);
+                    if (parentIndex !== -1) {
+                        activeQuestionNodes = activeQuestionNodes.slice(0, parentIndex + 1);
+                    } else { // Parent somehow not in active list, reset to just parent
+                        activeQuestionNodes = [currentParentQuestionId];
+                    }
+                } else if (targetNodeId !== 'start') { // Should only happen if something is wrong
+                    activeQuestionNodes = []; // Or some other recovery
+                }
 
 
-            const children = getChildren(branchStartNodeId);
-            children.forEach(childId => {
-                minimizeBranchRecursive(childId);
+                if (!activeQuestionNodes.includes(targetNodeId)) {
+                    activeQuestionNodes.push(targetNodeId);
+                }
+                activeSimResultNode = null; // Clear any "Sim" result
+            } else if (targetConfig.type === 'sim-result') {
+                // If we are going to a "Sim" result node
+                const parentQId = targetConfig.parentQuestion;
+                const parentIndex = activeQuestionNodes.indexOf(parentQId);
+                if (parentIndex !== -1) {
+                    activeQuestionNodes = activeQuestionNodes.slice(0, parentIndex + 1);
+                } else { // Parent question of sim-result is not in active list
+                    activeQuestionNodes = [parentQId]; // Make parent active
+                }
+                activeSimResultNode = targetNodeId;
+            }
+
+
+            // --- Update DOM ---
+            clearArrows(); // Clear previous arrows before drawing new ones
+
+            // 1. Hide all nodes initially and clear specific type classes
+            allDecisionNodeElements.forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('current', 'fade-in', 'question', 'sim-resultado-node');
+                el.style.top = ''; // Clear any explicit positioning from previous layouts
+                el.style.left = '';
+                // el.style.transform = ''; // CSS for .question handles its transform
             });
-        }
 
-        function showNode(targetNodeId, clickedButton) {
-            const newPath = getPathToNode(targetNodeId);
-            const allNodeElements = document.querySelectorAll('.decision-node');
-
-            // 1. Default state: minimize or hide all
-            allNodeElements.forEach(el => {
-                // Keep 'start' initially visible but potentially minimized if not in newPath (though it always is)
-                if (el.id === 'start' && !newPath.includes('start')) { // Should not happen with current getPathToNode
-                     el.classList.add('minimized'); // Or hidden
-                } else if (el.id !== 'start') {
-                    el.classList.add('deep-inactive'); // Hide everything else initially
-                }
-                el.classList.remove('current', 'fade-in');
-            });
-
-            // 2. Process active path
-            let currentYLevel = 0; // For potential dynamic Y adjustments (not fully used yet)
-
-            newPath.forEach((nodeIdInPath, index) => {
-                const nodeEl = document.getElementById(nodeIdInPath);
-                if (!nodeEl) return;
-
-                const config = nodeConfigurations[nodeIdInPath];
-                nodeEl.classList.remove('hidden', 'deep-inactive', 'minimized');
-                nodeEl.classList.add('fade-in');
-                nodeEl.style.top = config.top;
-                nodeEl.style.left = config.left;
-                nodeEl.style.transform = 'translateX(-50%)'; // Ensure this is maintained
-
-                if (nodeIdInPath === targetNodeId) {
-                    nodeEl.classList.add('current');
-                }
-
-                // 3. Handle children of the current node in the active path
-                if (config.type === 'question') {
-                    const children = getChildren(nodeIdInPath);
-                    const activeChildId = newPath[index + 1]; // Next node in our active path
-
-                    children.forEach(childId => {
-                        const childEl = document.getElementById(childId);
-                        if (!childEl) return;
-                        const childConfig = nodeConfigurations[childId];
-
-                        if (childId === activeChildId) {
-                            // This child is part of the active path, already handled or will be handled by iteration
-                            // Ensure it's not minimized if it was previously
-                            childEl.classList.remove('minimized', 'deep-inactive');
-                        } else {
-                            // This is an inactive sibling branch
-                            childEl.classList.remove('hidden', 'deep-inactive');
-                            childEl.classList.add('minimized', 'fade-in');
-
-                            // --- Revised Repositioning logic for minimized inactive sibling ---
-                            const activeChildOriginalLeft = parseFloat(nodeConfigurations[activeChildId].left);
-                            const minimizedNodeWidthPercent = 12.0; // Approx. 120px / 1000px_container_width
-                            const edgeSpacingPercent = 5.0; // Desired space from container edge
-                            const centerThreshold = 50.0;
-                            let newInactiveLeftPercent;
-
-                            if (activeChildOriginalLeft < centerThreshold) {
-                                // Active child is on the LEFT half, so place minimized inactive node on the RIGHT edge.
-                                // Position its center such that its right edge is `edgeSpacingPercent` from container right.
-                                newInactiveLeftPercent = 100.0 - edgeSpacingPercent - (minimizedNodeWidthPercent / 2);
-                            } else {
-                                // Active child is on the RIGHT half, so place minimized inactive node on the LEFT edge.
-                                // Position its center such that its left edge is `edgeSpacingPercent` from container left.
-                                newInactiveLeftPercent = edgeSpacingPercent + (minimizedNodeWidthPercent / 2);
-                            }
-
-                            childEl.style.top = childConfig.top; // Keep original vertical level
-                            childEl.style.left = newInactiveLeftPercent + '%';
-                            childEl.style.transform = 'translateX(-50%)'; // Center the node on this new left percentage
-
-                            // Minimize all descendants of this inactive sibling branch
-                            const grandChildren = getChildren(childId);
-                            grandChildren.forEach(grandChildId => {
-                                minimizeBranchRecursive(grandChildId);
-                            });
-                        }
-                    });
+            // 2. Display active question nodes (the main trunk)
+            let lastVisibleQuestionEl = null;
+            activeQuestionNodes.forEach(qId => {
+                const qEl = document.getElementById(qId);
+                if (qEl) {
+                    qEl.classList.remove('hidden');
+                    qEl.classList.add('question', 'fade-in');
+                    // The last question in the list is current IF no sim-result is shown
+                    if (qId === activeQuestionNodes[activeQuestionNodes.length - 1] && !activeSimResultNode) {
+                        qEl.classList.add('current');
+                    }
+                    lastVisibleQuestionEl = qEl;
                 }
             });
 
-            currentPath = newPath;
-            lastSelectedNodeId = targetNodeId;
+            // 3. Display active "Sim" result node, if any
+            if (activeSimResultNode) {
+                const simResultEl = document.getElementById(activeSimResultNode);
+                const simResultConfig = nodeConfigurations[activeSimResultNode];
 
-            // Scroll the target node into view (attempt to keep it centered)
-            const currentDomNode = document.getElementById(targetNodeId);
-            if (currentDomNode) {
-                // Simple scroll into view. With dynamic layout, this might not be needed.
-                // currentDomNode.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                if (simResultEl && simResultConfig) {
+                    simResultEl.classList.remove('hidden');
+                    simResultEl.classList.add('sim-resultado-node', 'fade-in', 'current');
+
+                    const parentQuestionEl = document.getElementById(simResultConfig.parentQuestion);
+                    if (parentQuestionEl) {
+                        // Position sim-result node to the right of its parent question node
+                        // Parent question node (.question) is 55% width. Sim-result (.sim-resultado-node) is 40%.
+                        // Gap can be (100 - 55 - 40) = 5%. So sim-result starts at 55% + (5%/2 for centering gap or just 55+2.5).
+                        // Let's make it simpler: Question is on left, Sim is on right.
+                        simResultEl.style.top = parentQuestionEl.offsetTop + 'px'; // Align top with parent's top
+                        simResultEl.style.left = '58%'; // Question is 0-55%, gap of 3%, sim-result starts at 58%
+                    } else {
+                        // Fallback if parent DOM element not found (should ideally not happen)
+                        simResultEl.style.top = (lastVisibleQuestionEl ? lastVisibleQuestionEl.offsetTop : 0) + 'px';
+                        simResultEl.style.left = '58%';
+                    }
+                    // Draw the arrow after the simResultEl is positioned
+                    drawArrow(simResultConfig.parentQuestion, activeSimResultNode);
+                }
+            }
+             // Scroll the current element into view if needed
+            const currentElement = document.querySelector('.decision-node.current');
+            if (currentElement) {
+                currentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // Adjust SVG canvas height to encompass all content
+            const svgCanvas = document.querySelector('.tree-container svg.arrow-canvas');
+            const treeContainer = document.querySelector('.tree-container');
+            if (svgCanvas && treeContainer) {
+                // Use a small timeout to allow DOM to update positions before measuring scrollHeight
+                setTimeout(() => {
+                    svgCanvas.style.height = treeContainer.scrollHeight + 'px';
+                }, 0);
             }
         }
 
         function resetTree() {
-            currentPath = ['start'];
-            lastSelectedNodeId = 'start';
-
-            document.querySelectorAll('.decision-node').forEach(el => {
-                const config = nodeConfigurations[el.id];
-                if (el.id === 'start') {
-                    el.classList.remove('hidden', 'minimized', 'deep-inactive', 'current');
-                    el.classList.add('fade-in');
-                    el.style.top = config.top;
-                    el.style.left = config.left;
-                    el.style.transform = 'translateX(-50%)';
-                } else {
-                    el.classList.add('deep-inactive'); // Hide others
-                    el.classList.remove('fade-in', 'minimized', 'current');
-                }
-            });
-            // document.getElementById('start').scrollIntoView({ behavior: 'smooth', block: 'center' });
-            showNode('start', document.getElementById('start')); // Re-run showNode for 'start' to apply initial layout
+            activeQuestionNodes = ['start']; // Reset state
+            activeSimResultNode = null;
+            showNode('start', null); // Re-render from start, null indicates no button was clicked
         }
 
         window.addEventListener('load', function() {
-            // Apply initial positions from config to all nodes
-            document.querySelectorAll('.decision-node').forEach(el => {
-                const config = nodeConfigurations[el.id];
-                if (config) {
-                    el.style.top = config.top;
-                    el.style.left = config.left;
-                    el.style.transform = 'translateX(-50%)'; // Crucial for centering
-                }
-                if (el.id !== 'start') {
-                    el.classList.add('deep-inactive'); // Initially hide all but start
+            // Initial display: show the 'start' node.
+            // The CSS for .decision-node and .decision-node.question handles initial layout of 'start'.
+            // All other nodes are hidden by default via HTML 'hidden' class or will be hidden by showNode.
+
+            // Make sure all nodes that are not 'start' are initially hidden by JS too, to be safe
+            document.querySelectorAll('.decision-node').forEach(node => {
+                if (node.id !== 'start') {
+                    node.classList.add('hidden');
                 } else {
-                    el.classList.remove('hidden', 'deep-inactive', 'minimized');
-                    el.classList.add('fade-in', 'current');
+                    node.classList.remove('hidden'); // Ensure start is not hidden by HTML
+                    node.classList.add('question', 'current', 'fade-in'); // Style start node
                 }
             });
+            showNode('start', null); // Render initial state
 
-            // Initial fade-in for the container
+            // Initial container fade-in effect
             const container = document.querySelector('.container');
             container.style.opacity = '0';
             container.style.transform = 'translateY(20px)';
