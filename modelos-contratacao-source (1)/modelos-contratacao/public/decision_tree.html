@@ -29,7 +29,7 @@
             width: 100%;
             min-height: 600px;
             position: relative;
-            overflow: hidden;
+            /* overflow: hidden; // Removed to allow button to be outside if needed, though it will be inside */
         }
 
         .header {
@@ -37,6 +37,7 @@
             color: white;
             padding: 1.5rem;
             text-align: center;
+            position: relative; /* Added for positioning context for the reset button */
         }
 
         .header h1 {
@@ -156,8 +157,8 @@
 
         .reset-btn {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 1.5rem; /* Align with header padding */
+            right: 1.5rem; /* Align with header padding */
             background: #667eea;
             color: white;
             border: none;
@@ -166,6 +167,7 @@
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s ease;
+            z-index: 10; /* Ensure it's above other header content if any overlap */
         }
 
         .reset-btn:hover {
@@ -236,20 +238,19 @@
 <body>
     <div class="container">
         <div class="header">
+            <button class="reset-btn" onclick="resetTree()">Recomeçar</button>
             <h1>Modelos de Contratação</h1>
             <p>Encontre o modelo ideal para seu projeto</p>
         </div>
 
         <div class="tree-container">
-            <button class="reset-btn" onclick="resetTree()">Recomeçar</button>
-
             <!-- Nó inicial -->
             <div class="decision-node question" id="start">
                 <h3>Escopo definido?</h3>
                 <p>Você tem clareza sobre os requisitos e entregas do projeto?</p>
                 <div class="options">
-                    <button class="btn btn-yes" onclick="showNode('scope-yes')">Sim</button>
-                    <button class="btn btn-no" onclick="showNode('scope-no')">Não</button>
+                    <button class="btn btn-yes" onclick="showNode('scope-yes', this)">Sim</button>
+                    <button class="btn btn-no" onclick="showNode('scope-no', this)">Não</button>
                 </div>
             </div>
 
@@ -264,8 +265,8 @@
                 <h3>Risco técnico alto?</h3>
                 <p>O projeto envolve tecnologias novas, integrações complexas ou incertezas técnicas?</p>
                 <div class="options">
-                    <button class="btn btn-yes" onclick="showNode('risk-yes')">Sim</button>
-                    <button class="btn btn-no" onclick="showNode('risk-no')">Não</button>
+                    <button class="btn btn-yes" onclick="showNode('risk-yes', this)">Sim</button>
+                    <button class="btn btn-no" onclick="showNode('risk-no', this)">Não</button>
                 </div>
             </div>
 
@@ -280,8 +281,8 @@
                 <h3>Capacidade de gestão interna?</h3>
                 <p>Sua equipe tem experiência em gestão de projetos e tecnologia?</p>
                 <div class="options">
-                    <button class="btn btn-yes" onclick="showNode('management-yes')">Sim</button>
-                    <button class="btn btn-no" onclick="showNode('management-no')">Não</button>
+                    <button class="btn btn-yes" onclick="showNode('management-yes', this)">Sim</button>
+                    <button class="btn btn-no" onclick="showNode('management-no', this)">Não</button>
                 </div>
             </div>
 
@@ -296,8 +297,8 @@
                 <h3>Projeto contínuo?</h3>
                 <p>É um projeto com necessidade de manutenção e evolução constante?</p>
                 <div class="options">
-                    <button class="btn btn-yes" onclick="showNode('continuous-yes')">Sim</button>
-                    <button class="btn btn-no" onclick="showNode('continuous-no')">Não</button>
+                    <button class="btn btn-yes" onclick="showNode('continuous-yes', this)">Sim</button>
+                    <button class="btn btn-no" onclick="showNode('continuous-no', this)">Não</button>
                 </div>
             </div>
 
@@ -316,66 +317,150 @@
     </div>
 
     <script>
-        let currentPath = [];
+        let currentPath = ['start']; // Initialize with the start node
+        let lastSelectedNodeId = 'start';
 
-        function showNode(nodeId) {
-            const node = document.getElementById(nodeId);
-            if (node) {
-                // Esconder nós do mesmo nível
-                hideOtherNodes(node);
+        // Function to get the parent ID of a node based on the decision tree structure
+        // This needs to be manually defined or inferred from your HTML structure if possible
+        const parentMap = {
+            'scope-yes': 'start',
+            'scope-no': 'start',
+            'risk-yes': 'scope-no',
+            'risk-no': 'scope-no',
+            'management-yes': 'risk-no',
+            'management-no': 'risk-no',
+            'continuous-yes': 'management-no',
+            'continuous-no': 'management-no'
+        };
 
-                // Mostrar nó atual
-                node.classList.remove('hidden');
-                node.classList.add('fade-in');
-
-                // Adicionar ao caminho
-                currentPath.push(nodeId);
-
-                // Scroll para o nó se necessário
-                setTimeout(() => {
-                    node.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-                }, 100);
+        function getPathToNode(nodeId) {
+            const path = [];
+            let current = nodeId;
+            while (current && current !== 'start') {
+                path.unshift(current);
+                current = parentMap[current];
             }
+            path.unshift('start');
+            return path;
         }
 
-        function hideOtherNodes(activeNode) {
+        function showNode(nodeId, clickedButton) {
+            const newPath = getPathToNode(nodeId);
             const allNodes = document.querySelectorAll('.decision-node');
-            const parentContainer = activeNode.parentNode;
+            const clickedNodeElement = clickedButton.closest('.decision-node');
+            const clickedNodeId = clickedNodeElement.id;
 
-            allNodes.forEach(node => {
-                if (node !== activeNode && node.id !== 'start' && !isInPath(node.id)) {
-                    node.classList.add('hidden');
+            // Determine the divergence point in the path
+            let divergenceIndex = -1;
+            for (let i = 0; i < currentPath.length; i++) {
+                if (currentPath[i] !== newPath[i]) {
+                    divergenceIndex = i;
+                    break;
+                }
+            }
+
+            // If the click is on a direct child of the current last node, extend the path
+            // Otherwise, treat it as changing a previous decision
+            let pathChangedPreviously = false;
+            if (parentMap[nodeId] !== lastSelectedNodeId && lastSelectedNodeId !== 'start' && clickedNodeId !== lastSelectedNodeId) {
+                 // User clicked on a node that is NOT a direct child of the last selected node.
+                 // This means they went back and changed a decision.
+                pathChangedPreviously = true;
+            }
+
+
+            allNodes.forEach(n => {
+                const isPartOfNewPath = newPath.includes(n.id);
+                const wasPartOfOldPath = currentPath.includes(n.id);
+
+                if (isPartOfNewPath) {
+                    n.classList.remove('hidden', 'minimized');
+                    n.classList.add('fade-in');
+                    // Ensure parent question nodes of the new path are not minimized
+                    if (n.classList.contains('question')) {
+                         n.classList.remove('minimized');
+                    }
+                } else if (wasPartOfOldPath) {
+                    // Node was part of the old path but not the new one
+                     if (n.classList.contains('answer')) { // Only hide/minimize answers
+                        n.classList.add('hidden');
+                        n.classList.remove('fade-in');
+                    } else if (n.classList.contains('question')) {
+                        // If it's a question node that's no longer in the active path to an answer,
+                        // and it's not the start node, it can be hidden or minimized.
+                        // For simplicity, let's hide it if it's not a direct parent of the new path.
+                        let isParentOfNewPath = false;
+                        newPath.forEach(pNodeId => {
+                            if(parentMap[pNodeId] === n.id) isParentOfNewPath = true;
+                        });
+                        if(!isParentOfNewPath && n.id !== 'start'){
+                            n.classList.add('hidden');
+                             n.classList.remove('fade-in');
+                        } else if (n.id !== 'start') {
+                            // Optionally minimize question nodes that are parents but not the direct one clicked
+                            // n.classList.add('minimized');
+                        }
+                    }
+                } else {
+                    // Node is not part of new or old path (e.g. sibling branches)
+                     n.classList.add('hidden');
+                     n.classList.remove('fade-in');
                 }
             });
+
+            // Update current path and last selected node
+            currentPath = newPath;
+            lastSelectedNodeId = nodeId; // The node we are navigating TO
+
+            // Highlight the current node (the one just revealed)
+            allNodes.forEach(n => n.classList.remove('current'));
+            const targetNode = document.getElementById(nodeId);
+            if (targetNode) {
+                targetNode.classList.add('current');
+                 setTimeout(() => {
+                    targetNode.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest', // Changed to 'nearest' for potentially better UX
+                        inline: 'center'
+                    });
+                }, 150); // Slightly increased delay
+            }
+             // Ensure the container scrolls if necessary to keep the tree visible
+            const treeContainer = document.querySelector('.tree-container');
+            setTimeout(() => {
+                 if (treeContainer.scrollHeight > treeContainer.clientHeight) {
+                    // This is a simple check; more sophisticated logic might be needed
+                    // depending on how you want to handle scrolling precisely.
+                    // For now, scrolling the target node into view should handle most cases.
+                }
+            }, 200);
         }
 
-        function isInPath(nodeId) {
-            return currentPath.includes(nodeId);
-        }
 
         function resetTree() {
-            // Esconder todos os nós exceto o inicial
-            const nodes = document.querySelectorAll('.decision-node:not(#start)');
-            nodes.forEach(node => {
-                node.classList.add('hidden');
-                node.classList.remove('fade-in');
+            currentPath = ['start'];
+            lastSelectedNodeId = 'start';
+            const allNodes = document.querySelectorAll('.decision-node');
+            allNodes.forEach(node => {
+                if (node.id === 'start') {
+                    node.classList.remove('hidden', 'minimized', 'current');
+                    node.classList.add('fade-in');
+                } else {
+                    node.classList.add('hidden');
+                    node.classList.remove('fade-in', 'minimized', 'current');
+                }
             });
-
-            // Resetar caminho
-            currentPath = [];
-
-            // Scroll para o início
             document.getElementById('start').scrollIntoView({
                 behavior: 'smooth',
                 block: 'center'
             });
         }
 
-        // Efeito de entrada inicial
+        // Initial setup
         window.addEventListener('load', function() {
+            document.getElementById('start').classList.remove('hidden');
+            document.getElementById('start').classList.add('current');
+            // Initial fade-in for the container
             const container = document.querySelector('.container');
             container.style.opacity = '0';
             container.style.transform = 'translateY(20px)';
