@@ -245,7 +245,7 @@ function App() {
                   <iframe
                     src="/decision_tree.html"
                     title="Fluxograma de Decisão Interativo"
-                    className="w-full h-[700px] rounded-lg border-none"
+                    className="w-full h-[950px] rounded-lg border-none"
                   />
                 </div>
               </CardContent>
